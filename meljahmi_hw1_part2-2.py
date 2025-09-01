@@ -1,13 +1,13 @@
-# meljahmi_hw1_part2-2_min.py
-# RBE-550 Assignment 1 — Part 2.2 (Minimal Submission)
+# meljahmi_hw1_part2-2.py
+# RBE-550 Assignment 1 — Part 2.2
 # ----------------------------------------------------
 # Generates obstacle fields on an N×N grid using tetrominoes (I, L, S, T).
 # Saves BLACK/WHITE EPS images for ρ in {0.10, 0.50, 0.70} by default.
-# Use --png to also save PNGs. That’s it.
+# Use --png to also save PNGs. Use --no-eps to skip EPS (not recommended).
 
 from __future__ import annotations
 import argparse, random
-from typing import List, Dict, Tuple
+from typing import List, Dict
 from pathlib import Path
 
 import numpy as np
@@ -81,7 +81,7 @@ def f_rho(rho: float, n: int, rng: random.Random) -> np.ndarray:
     return G
 
 # --- Rendering (black/white only) ---
-def save_bw(G: np.ndarray, rho: float, out_eps: Path, out_png: Path | None) -> None:
+def save_bw(G: np.ndarray, rho: float, save_eps: bool, outdir: Path, label: int, also_png: bool) -> None:
     BW = (G != EMPTY)
     fig, ax = plt.subplots(figsize=(6, 6), dpi=150)
     ax.imshow(BW, cmap="gray_r", interpolation="nearest", origin="lower")
@@ -89,15 +89,27 @@ def save_bw(G: np.ndarray, rho: float, out_eps: Path, out_png: Path | None) -> N
     actual = BW.mean()
     ax.set_title(f"Obstacle Field {G.shape[0]}×{G.shape[1]} — ρ target {rho:.2f}, actual {actual:.3f}", fontsize=10)
     plt.tight_layout()
-    fig.savefig(out_eps, format="eps")
-    if out_png is not None:
-        fig.savefig(out_png)
+
+    wrote = []
+    if save_eps:
+        eps_path = outdir / f"obstacles_rho_{label}.eps"
+        fig.savefig(eps_path, format="eps")
+        wrote.append(str(eps_path))
+    if also_png:
+        png_path = outdir / f"obstacles_rho_{label}.png"
+        fig.savefig(png_path)  # format inferred
+        wrote.append(str(png_path))
+
     plt.close(fig)
+    if wrote:
+        print("Saved:", ", ".join(wrote))
+    else:
+        print("Nothing saved (both EPS disabled and PNG not requested).")
 
 # --- CLI ---
 def parse_args():
     p = argparse.ArgumentParser(
-        description="RBE-550 A1 Part 2.2 — Minimal: black/white EPS figures for given ρ values.",
+        description="RBE-550 A0 Part 2.2 — Minimal: black/white EPS figures for given ρ values.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     p.add_argument("--rho", type=float, nargs="+", default=DEFAULT_RHOS, metavar="R",
@@ -108,6 +120,7 @@ def parse_args():
                    help="random seed for reproducibility")
     p.add_argument("--outdir", type=Path, default=Path("."), help="output directory")
     p.add_argument("--png", action="store_true", help="also save PNG files (in addition to EPS)")
+    p.add_argument("--no-eps", action="store_true", help="disable EPS (not recommended for submission)")
     return p.parse_args()
 
 # --- Main ---
@@ -119,10 +132,7 @@ def main():
     for rho in args.rho:
         G = f_rho(rho, args.n, rng)
         label = int(round(rho * 100))
-        eps_path = args.outdir / f"obstacles_rho_{label}.eps"
-        png_path = (args.outdir / f"obstacles_rho_{label}.png") if args.png else None
-        save_bw(G, rho, eps_path, png_path)
-        print(f"Saved: {eps_path}" + ("" if png_path is None else f", {png_path}"))
+        save_bw(G, rho, save_eps=(not args.no_eps), outdir=args.outdir, label=label, also_png=args.png)
 
 if __name__ == "__main__":
     main()
